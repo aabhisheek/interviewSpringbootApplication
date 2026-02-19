@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+build/
+
+# H2 Database (runtime files)
+data/
+*.mv.db
+*.trace.db
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# Compiled class files
+bin/
+*.class
+
+# OS files
+.DS_Store
+Thumbs.db

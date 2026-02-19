@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(node --version:*)",
+      "Bash(npm --version)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm run build)",
+      "Bash(./gradlew bootRun)",
+      "Bash(npm run dev)",
+      "Bash(cmd.exe /c:*)",
+      "Bash(test:*)",
+      "Bash(npm install:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(gradle clean:*)"
+    ]
+  }
+}
