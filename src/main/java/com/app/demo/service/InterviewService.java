@@ -58,6 +58,9 @@ public class InterviewService {
         return result;
     }
 
+
+
+
     @SuppressWarnings("unchecked")
     public Map<String, Object> getAdaptiveQuestion(String skill, int questionNumber,
                                                     List<Map<String, Object>> previousResults) {
