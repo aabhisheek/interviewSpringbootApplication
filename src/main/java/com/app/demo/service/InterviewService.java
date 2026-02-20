@@ -59,6 +59,72 @@ public class InterviewService {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getAdaptiveQuestion(String skill, int questionNumber,
+                                                    List<Map<String, Object>> previousResults) {
+        double avgScore = previousResults.stream()
+                .filter(r -> r.get("score") != null)
+                .mapToDouble(r -> ((Number) r.get("score")).doubleValue())
+                .average()
+                .orElse(5.0);
+
+        String difficulty = avgScore >= 7.5 ? "advanced" : avgScore >= 4.5 ? "intermediate" : "beginner";
+
+        StringBuilder history = new StringBuilder();
+        for (Map<String, Object> r : previousResults) {
+            history.append("Q: ").append(r.get("question"))
+                    .append("\nScore: ").append(r.get("score")).append("/10\n---\n");
+        }
+
+        String prompt = String.format(
+                "You are conducting an adaptive technical interview for the skill: %s.\n\n" +
+                "Previous questions and scores:\n%s\n" +
+                "Current assessed proficiency: %s (avg score: %.1f/10). Question number: %d.\n\n" +
+                "Generate ONE interview question at %s difficulty level.\n" +
+                "- advanced: deep architecture, design patterns, edge cases, trade-offs.\n" +
+                "- intermediate: practical usage, common patterns, debugging scenarios.\n" +
+                "- beginner: foundational concepts, definitions, simple examples.\n" +
+                "Do NOT repeat any previous question. Make it natural and conversational.\n\n" +
+                "Respond ONLY with this JSON (no markdown, no extra text):\n" +
+                "{\"question\": \"<the question>\", \"difficulty\": \"%s\"}",
+                skill,
+                history.length() > 0 ? history.toString() : "None (first question)\n",
+                difficulty, avgScore, questionNumber, difficulty, difficulty);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(groqApiKey);
+
+        Map<String, Object> message = Map.of("role", "user", "content", prompt);
+        Map<String, Object> requestBody = Map.of(
+                "model", groqModel,
+                "messages", List.of(message),
+                "temperature", 0.7,
+                "max_tokens", 250);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    groqApiUrl + "/chat/completions", HttpMethod.POST, entity, String.class);
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            String content = root.path("choices").get(0).path("message").path("content").asText();
+            content = content.replaceAll("```json\\s*", "").replaceAll("```\\s*", "").trim();
+
+            JsonNode json = objectMapper.readTree(content);
+            Map<String, Object> result = new HashMap<>();
+            result.put("question", json.path("question").asText());
+            result.put("difficulty", json.path("difficulty").asText(difficulty));
+            result.put("proficiency", difficulty);
+            result.put("avgScore", avgScore);
+            return result;
+        } catch (Exception e) {
+            log.error("Failed to generate adaptive question: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to generate adaptive question", e);
+        }
+    }
+
     public Map<String, Object> evaluateAnswer(String question, MultipartFile audio) {
         String transcript = transcribeAudio(audio);
         return scoreAnswer(question, transcript);

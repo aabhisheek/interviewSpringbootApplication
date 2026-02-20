@@ -20,3 +20,6 @@ bin/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Secrets
+src/main/resources/application.yml

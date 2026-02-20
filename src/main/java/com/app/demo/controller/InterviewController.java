@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -36,6 +37,22 @@ public class InterviewController {
             log.error("Failed to get interview token: {}", e.getMessage());
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to get interview token: " + e.getMessage()));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/adaptive-question")
+    public ResponseEntity<Map<String, Object>> getAdaptiveQuestion(@RequestBody Map<String, Object> request) {
+        try {
+            String skill = (String) request.getOrDefault("skill", "");
+            int questionNumber = ((Number) request.getOrDefault("questionNumber", 1)).intValue();
+            List<Map<String, Object>> previousResults =
+                    (List<Map<String, Object>>) request.getOrDefault("previousResults", List.of());
+            return ResponseEntity.ok(interviewService.getAdaptiveQuestion(skill, questionNumber, previousResults));
+        } catch (Exception e) {
+            log.error("Failed to get adaptive question: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to get adaptive question: " + e.getMessage()));
         }
     }
 
