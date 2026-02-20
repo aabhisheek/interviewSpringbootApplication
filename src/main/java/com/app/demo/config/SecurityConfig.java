@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/token").authenticated()
                         .requestMatchers("/api/lightcast/**").authenticated()
                         .requestMatchers("/api/interview/**").authenticated()
                         .requestMatchers("/h2-console/**").permitAll()

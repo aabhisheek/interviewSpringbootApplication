@@ -3,8 +3,10 @@ package com.app.demo.controller;
 import com.app.demo.service.InterviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +36,20 @@ public class InterviewController {
             log.error("Failed to get interview token: {}", e.getMessage());
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to get interview token: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/answer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> evaluateAnswer(
+            @RequestParam("question") String question,
+            @RequestPart("audio") MultipartFile audio) {
+        try {
+            Map<String, Object> result = interviewService.evaluateAnswer(question, audio);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Failed to evaluate answer: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to evaluate answer: " + e.getMessage()));
         }
     }
 

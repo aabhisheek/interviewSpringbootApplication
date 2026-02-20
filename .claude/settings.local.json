@@ -12,7 +12,8 @@
       "Bash(test:*)",
       "Bash(npm install:*)",
       "Bash(./gradlew clean:*)",
-      "Bash(gradle clean:*)"
+      "Bash(gradle clean:*)",
+      "Bash(jar tf:*)"
     ]
   }
 }
