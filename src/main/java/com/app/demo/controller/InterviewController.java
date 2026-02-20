@@ -3,11 +3,10 @@ package com.app.demo.controller;
 import com.app.demo.service.InterviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,12 +55,13 @@ public class InterviewController {
         }
     }
 
-    @PostMapping(value = "/answer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> evaluateAnswer(
-            @RequestParam("question") String question,
-            @RequestPart("audio") MultipartFile audio) {
+    @PostMapping("/answer")
+    public ResponseEntity<Map<String, Object>> evaluateAnswer(@RequestBody Map<String, String> request) {
         try {
-            Map<String, Object> result = interviewService.evaluateAnswer(question, audio);
+            String question = request.get("question");
+            String audioBase64 = request.get("audioData");
+            byte[] audioBytes = Base64.getDecoder().decode(audioBase64);
+            Map<String, Object> result = interviewService.evaluateAnswer(question, audioBytes);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Failed to evaluate answer: {}", e.getMessage(), e);

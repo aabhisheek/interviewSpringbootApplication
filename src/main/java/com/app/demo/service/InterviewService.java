@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
@@ -125,18 +124,17 @@ public class InterviewService {
         }
     }
 
-    public Map<String, Object> evaluateAnswer(String question, MultipartFile audio) {
-        String transcript = transcribeAudio(audio);
+    public Map<String, Object> evaluateAnswer(String question, byte[] audioBytes) {
+        String transcript = transcribeAudio(audioBytes);
         return scoreAnswer(question, transcript);
     }
 
-    private String transcribeAudio(MultipartFile audio) {
+    private String transcribeAudio(byte[] audioBytes) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.setBearerAuth(groqApiKey);
 
-            byte[] audioBytes = audio.getBytes();
             ByteArrayResource audioResource = new ByteArrayResource(audioBytes) {
                 @Override
                 public String getFilename() {

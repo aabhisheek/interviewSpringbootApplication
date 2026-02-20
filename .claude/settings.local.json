@@ -13,7 +13,17 @@
       "Bash(npm install:*)",
       "Bash(./gradlew clean:*)",
       "Bash(gradle clean:*)",
-      "Bash(jar tf:*)"
+      "Bash(jar tf:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(git diff-files:*)",
+      "Bash(git update-index:*)",
+      "Bash(git add:*)",
+      "Bash(git filter-repo:*)",
+      "Bash(pip show:*)",
+      "Bash(python -m git_filter_repo:*)",
+      "Bash(git reset:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
