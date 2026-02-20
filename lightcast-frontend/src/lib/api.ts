@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 const LIGHTCAST_BASE = `${API_BASE}/api/lightcast`;
 const AUTH_BASE = `${API_BASE}/api/auth`;
 const INTERVIEW_BASE = `${API_BASE}/api/interview`;
