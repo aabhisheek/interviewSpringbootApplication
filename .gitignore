@@ -23,3 +23,5 @@ Thumbs.db
 
 # Secrets
 src/main/resources/application.yml
+src/main/resources/.env
+
