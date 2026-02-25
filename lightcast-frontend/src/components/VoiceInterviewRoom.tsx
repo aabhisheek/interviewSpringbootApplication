@@ -272,8 +272,31 @@ function VoiceInterviewUI({
           window.speechSynthesis.onvoiceschanged = null;
         };
       }
-      utter.onend = () => resolve();
-      utter.onerror = () => resolve();
+
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        clearInterval(watchdog);
+        clearTimeout(fallbackTimer);
+        resolve();
+      };
+
+      utter.onend = finish;
+      utter.onerror = finish;
+
+      // iOS Safari: speechSynthesis can silently pause (e.g. on tab switch)
+      // and onend sometimes never fires — poll and resume as needed
+      const watchdog = setInterval(() => {
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+        if (!window.speechSynthesis.speaking) finish();
+      }, 250);
+
+      // Hard timeout: ~180 wpm at rate 0.88, with 50% buffer
+      const wordCount = text.split(/\s+/).length;
+      const fallbackMs = Math.max((wordCount / (180 * 0.88)) * 60000 * 1.5, 3000);
+      const fallbackTimer = setTimeout(finish, fallbackMs);
+
       window.speechSynthesis.speak(utter);
     });
   }, []);
@@ -288,17 +311,23 @@ function VoiceInterviewUI({
       }
 
       const chunks: Blob[] = [];
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
-      const recorder = new MediaRecorder(stream, { mimeType });
+      // iOS Safari only supports audio/mp4; Android/Chrome support audio/webm
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg;codecs=opus",
+      ].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
       };
       recorder.start(500);
 
       // AudioContext only for the visual level bar — no auto-stop logic
+      // iOS Safari starts AudioContext suspended; resume() unlocks it
       const audioCtx = new AudioContext();
+      if (audioCtx.state === "suspended") audioCtx.resume();
       const analyser = audioCtx.createAnalyser();
       audioCtx.createMediaStreamSource(stream).connect(analyser);
       analyser.fftSize = 512;
