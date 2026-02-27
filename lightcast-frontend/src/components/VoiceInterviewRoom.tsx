@@ -228,8 +228,17 @@ function VoiceInterviewUI({
   const abortedRef = useRef(false);
   const resultsRef = useRef<QuestionResult[]>([]);
   resultsRef.current = results;
+  // Pre-loaded voices so they're ready before any async gap
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
+    // Preload TTS voices (Chrome loads them asynchronously)
+    const loadVoices = () => {
+      voicesRef.current = window.speechSynthesis.getVoices();
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((s) => {
@@ -240,6 +249,7 @@ function VoiceInterviewUI({
     return () => {
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
       window.speechSynthesis.cancel();
+      window.speechSynthesis.onvoiceschanged = null;
     };
   }, []);
 
@@ -250,54 +260,57 @@ function VoiceInterviewUI({
       const utter = new SpeechSynthesisUtterance(text);
       utter.rate = 0.88;
       utter.pitch = 1.05;
-      // Pick a natural-sounding online English voice if available
-      const pick = () => {
-        const voices = window.speechSynthesis.getVoices();
-        const preferred =
-          voices.find(
-            (v) =>
-              v.lang.startsWith("en") &&
-              !v.localService &&
-              (v.name.includes("Google") ||
-                v.name.includes("Natural") ||
-                v.name.includes("Neural") ||
-                v.name.includes("Samantha"))
-          ) || voices.find((v) => v.lang.startsWith("en"));
-        if (preferred) utter.voice = preferred;
-      };
-      pick();
-      if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          pick();
-          window.speechSynthesis.onvoiceschanged = null;
-        };
-      }
+      // Pick a natural-sounding online English voice from the preloaded list
+      const voices = voicesRef.current.length
+        ? voicesRef.current
+        : window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find(
+          (v) =>
+            v.lang.startsWith("en") &&
+            !v.localService &&
+            (v.name.includes("Google") ||
+              v.name.includes("Natural") ||
+              v.name.includes("Neural") ||
+              v.name.includes("Samantha"))
+        ) || voices.find((v) => v.lang.startsWith("en"));
+      if (preferred) utter.voice = preferred;
 
       let finished = false;
+      let watchdog: ReturnType<typeof setInterval> | null = null;
+      let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
       const finish = () => {
         if (finished) return;
         finished = true;
-        clearInterval(watchdog);
-        clearTimeout(fallbackTimer);
+        if (watchdog !== null) clearInterval(watchdog);
+        if (fallbackTimer !== null) clearTimeout(fallbackTimer);
         resolve();
       };
 
       utter.onend = finish;
       utter.onerror = finish;
 
-      // iOS Safari: speechSynthesis can silently pause (e.g. on tab switch)
-      // and onend sometimes never fires — poll and resume as needed
-      const watchdog = setInterval(() => {
-        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-        if (!window.speechSynthesis.speaking) finish();
-      }, 250);
-
-      // Hard timeout: ~180 wpm at rate 0.88, with 50% buffer
-      const wordCount = text.split(/\s+/).length;
-      const fallbackMs = Math.max((wordCount / (180 * 0.88)) * 60000 * 1.5, 3000);
-      const fallbackTimer = setTimeout(finish, fallbackMs);
-
+      // Call speak() first, then start the watchdog after 500ms.
+      // This prevents a false-positive finish() call: right after cancel(),
+      // speechSynthesis.speaking is briefly false before speak() sets it true.
       window.speechSynthesis.speak(utter);
+
+      // iOS Safari: speechSynthesis can silently pause (e.g. on tab switch)
+      // and onend sometimes never fires — poll and resume as needed.
+      // Delayed 500ms so speaking has time to become true before we check it.
+      setTimeout(() => {
+        if (finished) return;
+        watchdog = setInterval(() => {
+          if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+          if (!window.speechSynthesis.speaking) finish();
+        }, 250);
+
+        // Hard timeout: ~180 wpm at rate 0.88, with 50% buffer (minus startup delay)
+        const wordCount = text.split(/\s+/).length;
+        const fallbackMs = Math.max((wordCount / (180 * 0.88)) * 60000 * 1.5 - 500, 2500);
+        fallbackTimer = setTimeout(finish, fallbackMs);
+      }, 500);
     });
   }, []);
 
@@ -462,6 +475,17 @@ function VoiceInterviewUI({
 
     onComplete(allResults);
   }, [skill, speak, listen, onComplete]);
+
+  // Unlock Web Speech API in the user-gesture context BEFORE any await.
+  // Chrome blocks speechSynthesis.speak() called after an async gap — a silent
+  // warmup utterance spoken synchronously here keeps the permission alive.
+  const handleStartClick = useCallback(() => {
+    const warmup = new SpeechSynthesisUtterance(" ");
+    warmup.volume = 0;
+    warmup.rate = 10;
+    window.speechSynthesis.speak(warmup);
+    startInterview();
+  }, [startInterview]);
 
   const handleEndEarly = () => {
     abortedRef.current = true;
@@ -701,7 +725,7 @@ function VoiceInterviewUI({
         <div className="flex flex-col gap-2 mt-auto">
           {agentState === "idle" && (
             <button
-              onClick={startInterview}
+              onClick={handleStartClick}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
