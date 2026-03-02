@@ -150,6 +150,32 @@ export interface AnswerResult {
   feedback: string;
 }
 
+export interface DetailedExplanation {
+  detailedAnswer: string;
+  codeExample: string | null;
+  language: string | null;
+  bonusTip: string;
+  relatedQuestion: string;
+  additionalInfo: string;
+}
+
+export async function getDetailedExplanation(
+  question: string,
+  transcript: string,
+  score: number
+): Promise<DetailedExplanation> {
+  const res = await fetch(`${INTERVIEW_BASE}/explain`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ question, transcript, score }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "Failed to get detailed explanation");
+  }
+  return res.json();
+}
+
 async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

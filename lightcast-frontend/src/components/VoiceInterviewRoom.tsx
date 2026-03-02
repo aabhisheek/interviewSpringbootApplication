@@ -14,6 +14,7 @@ import {
   getAdaptiveQuestion,
   AnswerResult,
 } from "@/lib/api";
+import DetailedExplanationPanel from "@/components/DetailedExplanationPanel";
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const TOTAL_QUESTIONS = 8;
@@ -177,6 +178,12 @@ function SummaryScreen({
                 </p>
                 <p className="text-sm text-gray-700">{r.feedback}</p>
               </div>
+              <DetailedExplanationPanel
+                question={r.question}
+                transcript={r.transcript}
+                score={r.score}
+                theme="indigo"
+              />
             </div>
           </div>
         ))}

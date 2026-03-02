@@ -3,8 +3,11 @@ package com.app.demo.controller;
 import com.app.demo.service.InterviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.util.Base64;
 import java.util.HashMap;
@@ -32,6 +35,12 @@ public class InterviewController {
             response.put("wsUrl", interviewService.getWsUrl());
 
             return ResponseEntity.ok(response);
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getResponseBodyAsString()));
+        } catch (HttpServerErrorException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Failed to get interview token: {}", e.getMessage());
             return ResponseEntity.internalServerError()
@@ -48,6 +57,12 @@ public class InterviewController {
             List<Map<String, Object>> previousResults =
                     (List<Map<String, Object>>) request.getOrDefault("previousResults", List.of());
             return ResponseEntity.ok(interviewService.getAdaptiveQuestion(skill, questionNumber, previousResults));
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getResponseBodyAsString()));
+        } catch (HttpServerErrorException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Failed to get adaptive question: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
@@ -63,10 +78,36 @@ public class InterviewController {
             byte[] audioBytes = Base64.getDecoder().decode(audioBase64);
             Map<String, Object> result = interviewService.evaluateAnswer(question, audioBytes);
             return ResponseEntity.ok(result);
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getResponseBodyAsString()));
+        } catch (HttpServerErrorException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Failed to evaluate answer: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to evaluate answer: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/explain")
+    public ResponseEntity<Map<String, Object>> getDetailedExplanation(@RequestBody Map<String, Object> request) {
+        try {
+            String question = (String) request.getOrDefault("question", "");
+            String transcript = (String) request.getOrDefault("transcript", "");
+            int score = ((Number) request.getOrDefault("score", 0)).intValue();
+            return ResponseEntity.ok(interviewService.getDetailedExplanation(question, transcript, score));
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getResponseBodyAsString()));
+        } catch (HttpServerErrorException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", e.getResponseBodyAsString()));
+        } catch (Exception e) {
+            log.error("Failed to get detailed explanation: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to get detailed explanation: " + e.getMessage()));
         }
     }
 
@@ -75,6 +116,12 @@ public class InterviewController {
         try {
             String skill = request.get("skill");
             return ResponseEntity.ok(interviewService.getQuestions(skill));
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getResponseBodyAsString()));
+        } catch (HttpServerErrorException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Failed to get interview questions: {}", e.getMessage());
             return ResponseEntity.internalServerError()

@@ -10,6 +10,7 @@ import {
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
 import { submitInterviewAnswer, AnswerResult } from "@/lib/api";
+import DetailedExplanationPanel from "@/components/DetailedExplanationPanel";
 
 interface InterviewRoomProps {
   token: string;
@@ -115,6 +116,12 @@ function SummaryScreen({
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Feedback</p>
                         <p className="text-sm text-slate-700 leading-relaxed">{answer.feedback}</p>
                       </div>
+                      <DetailedExplanationPanel
+                        question={q}
+                        transcript={answer.transcript}
+                        score={answer.score}
+                        theme="blue"
+                      />
                     </div>
                   ) : (
                     <p className="mt-2 text-sm text-slate-400 italic">Not answered</p>
@@ -312,6 +319,12 @@ function InterviewUI({
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Feedback</p>
                   <p className="text-sm text-slate-700 leading-relaxed">{currentAnswer.feedback}</p>
                 </div>
+                <DetailedExplanationPanel
+                  question={questions[currentIndex]}
+                  transcript={currentAnswer.transcript}
+                  score={currentAnswer.score}
+                  theme="blue"
+                />
               </div>
             )}
 

@@ -9,6 +9,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -121,6 +123,8 @@ public class InterviewService {
             result.put("proficiency", difficulty);
             result.put("avgScore", avgScore);
             return result;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to generate adaptive question: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to generate adaptive question", e);
@@ -157,9 +161,11 @@ public class InterviewService {
                     HttpMethod.POST, entity, String.class);
 
             return response.getBody() != null ? response.getBody().trim() : "";
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Transcription failed: {}", e.getMessage(), e);
-            return "";
+            throw new RuntimeException("Transcription failed", e);
         }
     }
 
@@ -208,13 +214,77 @@ public class InterviewService {
             JsonNode scoring = objectMapper.readTree(content);
             result.put("score", scoring.path("score").asInt(0));
             result.put("feedback", scoring.path("feedback").asText("No feedback available."));
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Scoring failed: {}", e.getMessage(), e);
-            result.put("score", 0);
-            result.put("feedback", "Could not evaluate answer automatically.");
+            throw new RuntimeException("Scoring failed", e);
         }
 
         return result;
+    }
+
+    public Map<String, Object> getDetailedExplanation(String question, String transcript, int score) {
+        String answerContext = (transcript == null || transcript.isBlank())
+                ? "(candidate did not provide an answer)" : transcript;
+
+        String prompt = String.format(
+                "You are a senior technical interviewer and educator.\n\n" +
+                "A candidate just answered this interview question:\n" +
+                "Question: %s\n\n" +
+                "Candidate's answer (transcribed): %s\n" +
+                "Score they received: %d/10\n\n" +
+                "Provide a thorough learning resource that covers:\n" +
+                "1. A complete, detailed model answer that would score 10/10 in any interview — be specific and precise.\n" +
+                "2. A code example IF the question is about programming/code/algorithms (set codeExample to null if not applicable).\n" +
+                "3. The programming language of the code (set language to null if no code).\n" +
+                "4. A bonus interview tip covering a related concept or deeper insight that interviewers often probe — one concise paragraph.\n" +
+                "5. One related follow-up question that interviewers commonly ask after this topic.\n" +
+                "6. Additional interview context: briefly describe 2-3 related topics or concepts that interviewers COMMONLY ask about in the same subject area. For each, state the topic name and one sentence on what interviewers look for. This helps candidates prepare holistically.\n\n" +
+                "Respond ONLY with valid JSON (no markdown outside the codeExample value):\n" +
+                "{\"detailedAnswer\": \"<full model answer>\", \"codeExample\": \"<code or null>\", " +
+                "\"language\": \"<language or null>\", \"bonusTip\": \"<tip>\", \"relatedQuestion\": \"<question>\", " +
+                "\"additionalInfo\": \"<2-3 related topics commonly asked in interviews around this subject>\"}",
+                question, answerContext, score);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(groqApiKey);
+
+        Map<String, Object> message = Map.of("role", "user", "content", prompt);
+        Map<String, Object> requestBody = Map.of(
+                "model", groqModel,
+                "messages", List.of(message),
+                "temperature", 0.4,
+                "max_tokens", 1500);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    groqApiUrl + "/chat/completions", HttpMethod.POST, entity, String.class);
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            String content = root.path("choices").get(0).path("message").path("content").asText();
+            content = content.replaceAll("```json\\s*", "").replaceAll("```\\s*$", "").trim();
+
+            JsonNode json = objectMapper.readTree(content);
+            Map<String, Object> result = new HashMap<>();
+            result.put("detailedAnswer", json.path("detailedAnswer").asText(""));
+            String codeEx = json.path("codeExample").isNull() ? null : json.path("codeExample").asText(null);
+            result.put("codeExample", codeEx);
+            String lang = json.path("language").isNull() ? null : json.path("language").asText(null);
+            result.put("language", lang);
+            result.put("bonusTip", json.path("bonusTip").asText(""));
+            result.put("relatedQuestion", json.path("relatedQuestion").asText(""));
+            result.put("additionalInfo", json.path("additionalInfo").asText(""));
+            return result;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to generate detailed explanation: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to generate detailed explanation", e);
+        }
     }
 
     public Map<String, Object> getQuestions(String skill) {
@@ -255,6 +325,8 @@ public class InterviewService {
 
             return Map.of("questions", questions);
 
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to generate questions via Groq: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to generate interview questions", e);
