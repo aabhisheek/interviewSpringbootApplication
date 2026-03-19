@@ -1,0 +1,76 @@
+# Dependencies
+node_modules/
+vendor/
+.bundle/
+
+# Build output
+dist/
+build/
+out/
+target/
+*.class
+*.jar
+*.war
+*.pyc
+__pycache__/
+
+# Gradle caches
+.gradle/
+.kotlin/
+
+# Coverage and reports
+coverage/
+htmlcov/
+*.lcov
+build/reports/
+
+# Caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.next/
+.turbo/
+
+# Environment and secrets — NEVER read these
+.env
+.env.local
+.env.production
+.env.*
+!.env.example
+*.pem
+*.key
+application.properties
+application-prod.properties
+application-local.properties
+credentials.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Large lock files (read manifests instead: package.json, requirements.txt, build.gradle)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+poetry.lock
+
+# Gradle wrapper binary (not useful to read)
+gradle/wrapper/gradle-wrapper.jar
+
+# Compiled TypeScript output
+lightcast-frontend/.next/
+lightcast-frontend/out/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+agent/.venv/
+
+# Test result XML
+build/test-results/

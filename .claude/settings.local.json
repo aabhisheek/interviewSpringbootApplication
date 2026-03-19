@@ -31,7 +31,8 @@
       "mcp__render__update_environment_variables",
       "Bash(find:*)",
       "Bash(taskkill:*)",
-      "Bash(cmd:*)"
+      "Bash(cmd:*)",
+      "Skill(update-config)"
     ]
   }
 }
